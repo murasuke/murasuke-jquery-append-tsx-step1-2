@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <title>babel/standaloneでjsxをトランスパイルするテンプレート</title>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // babelでjsxをトランスパイル可能にするため、プライグイン[transform-react-jsx]を
+    // 読み込んだプリセット「jsx」を登録します
+    Babel.registerPreset('jsx', {
+      presets: [
+        [Babel.availablePresets['env']]
+      ],
+      plugins: [
+          [
+            Babel.availablePlugins['transform-react-jsx'],
+            {pragma:'h', pragmaFrag: '"div"'},
+          ]
+      ],
+    });
+  </script>
+  <script>
+    /**
+     * DOMに変換する関数
+     * ・React.createElement()や、hyperscript()のようにDOMを生成する関数
+     *   tag: タグ名
+     *   props: タグの属性
+     *   children: 子要素
+     * 変換サンプル
+     * ・h('div')
+     *    ⇒ <div></div>
+     * ・h('div',null, 'text')
+     *    ⇒ <div>text</div>
+     */
+    function h(tag, props, ...children) {
+      // elementを作成
+      const elm = document.createElement(tag);
+      // 属性を追加
+      for (const prop in props) {
+        if (prop === 'style') {
+          // styleの追加
+          for (const s in props[prop]) {
+            elm.style[s] = props[prop][s];
+          }
+        } else if (/^on\w+/.test(prop)) {
+          // イベントハンドラの追加
+          elm.addEventListener(prop.substring(2), props[prop], false);
+        } else {
+          // 上記以外の属性を追加
+          elm.setAttribute(prop, props[prop]);
+        }
+      }
+
+      // 子要素の追加
+      if (Array.isArray(children)) {
+        flatten = children.flat();
+        for (const child of flatten) {
+          if (typeof child === 'object') {
+            // Nodeをそのまま追加(深さ優先で子側が生成され、それが渡される)
+            elm.appendChild(child);
+          } else {
+            // 文字列の場合、TextNodeとして追加
+            elm.appendChild(document.createTextNode(child));
+          }
+        }
+      }
+      return elm;
+    }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <!--
+    type="text/babel" ⇒ babelにトランスパイル対象であることを伝える(ブラウザからは無視されます)
+    data-presets="jsx" ⇒ 上記で登録したプリセットでトランスパイルします
+   -->
+  <script type="text/babel" data-presets="jsx" >
+    const elements = <a href="https://yahoo.co.jp"><button>Yahooへ</button></a>;
+    document.getElementById('app').appendChild(elements);
+  </script>
+</body>
+</html>
